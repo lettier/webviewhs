@@ -1,0 +1,10 @@
+resolver: lts-9.21
+packages:
+  - '.'
+extra-package-dbs: []
+explicit-setup-deps:
+  ! '*': true
+extra-deps:
+  - text-format-heavy-0.1.5.1
+compiler-check: match-exact
+flags: {}

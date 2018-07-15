@@ -1,0 +1,11 @@
+.cabal-sandbox/*
+.stack-work/*
+*.stack*
+dist/*
+haddock/*
+hackage-docs-archive/*
+cabal.sandbox.config
+examples/.cabal-sandbox/*
+examples/.stack-work/*
+examples/dist/*
+examples/caba.sandbox.config

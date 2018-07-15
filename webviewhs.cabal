@@ -1,0 +1,69 @@
+name:           webviewhs
+version:        0.0.0.0
+synopsis:       Create native dialogs and windows that run web pages.
+description:    Please see the README on GitHub at <https://github.com/lettier/webviewhs#readme>
+category:         UI
+                , Graphics
+                , GUI
+                , User Interfaces
+homepage:       https://github.com/lettier/webviewhs#readme
+bug-reports:    https://github.com/lettier/webviewhs/issues
+author:         David Lettier
+maintainer:     David Lettier
+copyright:      (C) 2018 David Lettier
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+cabal-version:  >= 1.10
+
+extra-source-files:
+    ./CHANGELOG.md
+  , ./deps/webview/webview.h
+  , ./deps/webview/LICENSE
+  , ./src/c/webview-ffi.h
+  , ./src/c/webview-ffi.c
+
+source-repository head
+  type: git
+  location: https://github.com/lettier/webviewhs
+
+library
+  hs-source-dirs:
+      src/
+    , src/Graphics/UI/
+  include-dirs:
+      deps/webview/
+  includes:
+      deps/webview/webview.h
+    , src/c/webview-ffi.h
+  c-sources:
+      src/c/webview-ffi.c
+  build-depends:
+      base >= 4.7 && < 5
+    , text
+    , text-format-heavy
+    , jmacro
+    , clay
+  exposed-modules:
+      Graphics.UI.Webviewhs
+  if os(linux)
+    cc-options: -DWEBVIEW_GTK=1 -pthread
+  else
+    if os(darwin)
+      cc-options: -DWEBVIEW_COCOA=1 -ObjC -x objective-c
+    else
+      if os(windows)
+        cc-options: -DWEBVIEW_WINAPI=1 -mwindows
+        extra-libraries: ole32 comctl32 oleaut32 uuid
+  if os(linux)
+    pkgconfig-depends:
+        gtk+-3.0
+      , webkit2gtk-4.0
+  if os(darwin)
+    frameworks:
+        Cocoa
+      , Webkit
+  ghc-options:
+    -Wall
+    -freverse-errors
+  default-language: Haskell2010

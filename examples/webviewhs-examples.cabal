@@ -1,0 +1,275 @@
+name:           webviewhs-examples
+version:        0.0.0.0
+description:    Please see the README on GitHub at <https://github.com/lettier/examples/webviewhs#readme>
+homepage:       https://github.com/lettier/webviewhs/examples#readme
+bug-reports:    https://github.com/lettier/webviewhs/issues
+author:         David Lettier
+maintainer:     David Lettier
+copyright:      (C) 2018 David Lettier
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+cabal-version:  >= 1.10
+
+extra-source-files:
+    ./CHANGELOG.md
+
+source-repository head
+  type: git
+  location: https://github.com/lettier/webviewhs
+
+executable how-do-i-create-a-window-and-have-it-run-itself
+  main-is: how-do-i-create-a-window-and-have-it-run-itself.hs
+  hs-source-dirs:
+      .
+  ghc-options:
+    -Wall
+    -freverse-errors
+    -threaded
+    -rtsopts
+    -with-rtsopts=-N
+  build-depends:
+      base >= 4.7 && < 5
+    , webviewhs
+  default-language: Haskell2010
+
+executable how-do-i-create-a-window
+  main-is: how-do-i-create-a-window.hs
+  hs-source-dirs:
+      .
+  ghc-options:
+    -Wall
+    -freverse-errors
+    -threaded
+    -rtsopts
+    -with-rtsopts=-N
+  build-depends:
+      base >= 4.7 && < 5
+    , webviewhs
+  default-language: Haskell2010
+
+executable how-do-i-set-the-window-title
+  main-is: how-do-i-set-the-window-title.hs
+  hs-source-dirs:
+      .
+  ghc-options:
+    -Wall
+    -freverse-errors
+    -threaded
+    -rtsopts
+    -with-rtsopts=-N
+  build-depends:
+      base >= 4.7 && < 5
+    , webviewhs
+  default-language: Haskell2010
+
+executable how-do-i-toggle-the-windows-fullscreen-state
+  main-is: how-do-i-toggle-the-windows-fullscreen-state.hs
+  hs-source-dirs:
+      .
+  ghc-options:
+    -Wall
+    -freverse-errors
+    -threaded
+    -rtsopts
+    -with-rtsopts=-N
+  build-depends:
+      base >= 4.7 && < 5
+    , webviewhs
+  default-language: Haskell2010
+
+executable how-do-i-set-the-windows-color
+  main-is: how-do-i-set-the-windows-color.hs
+  hs-source-dirs:
+      .
+  ghc-options:
+    -Wall
+    -freverse-errors
+    -threaded
+    -rtsopts
+    -with-rtsopts=-N
+  build-depends:
+      base >= 4.7 && < 5
+    , webviewhs
+  default-language: Haskell2010
+
+executable how-do-i-terminate-the-window-loop
+  main-is: how-do-i-terminate-the-window-loop.hs
+  hs-source-dirs:
+      .
+  ghc-options:
+    -Wall
+    -freverse-errors
+    -threaded
+    -rtsopts
+    -with-rtsopts=-N
+  build-depends:
+      base >= 4.7 && < 5
+    , webviewhs
+  default-language: Haskell2010
+
+executable how-do-i-exit-the-window
+  main-is: how-do-i-exit-the-window.hs
+  hs-source-dirs:
+      .
+  ghc-options:
+    -Wall
+    -freverse-errors
+    -threaded
+    -rtsopts
+    -with-rtsopts=-N
+  build-depends:
+      base >= 4.7 && < 5
+    , webviewhs
+  default-language: Haskell2010
+
+executable how-do-i-run-my-own-function-in-the-window-loop
+  main-is: how-do-i-run-my-own-function-in-the-window-loop.hs
+  hs-source-dirs:
+      .
+  ghc-options:
+    -Wall
+    -freverse-errors
+    -threaded
+    -rtsopts
+    -with-rtsopts=-N
+  build-depends:
+      base >= 4.7 && < 5
+    , random
+    , webviewhs
+    , jmacro
+  default-language: Haskell2010
+
+executable how-do-i-run-some-function-in-the-main-window-thread-while-in-some-other-thread
+  main-is: how-do-i-run-some-function-in-the-main-window-thread-while-in-some-other-thread.hs
+  hs-source-dirs:
+      .
+  ghc-options:
+    -Wall
+    -freverse-errors
+    -threaded
+    -rtsopts
+    -with-rtsopts=-N
+  build-depends:
+      base >= 4.7 && < 5
+    , random
+    , webviewhs
+    , jmacro
+  default-language: Haskell2010
+
+executable how-do-i-open-an-alert-dialog
+  main-is: how-do-i-open-an-alert-dialog.hs
+  hs-source-dirs:
+      .
+  ghc-options:
+    -Wall
+    -freverse-errors
+    -threaded
+    -rtsopts
+    -with-rtsopts=-N
+  build-depends:
+      base >= 4.7 && < 5
+    , webviewhs
+  default-language: Haskell2010
+
+executable how-do-i-open-an-open-dialog
+  main-is: how-do-i-open-an-open-dialog.hs
+  hs-source-dirs:
+      .
+  ghc-options:
+    -Wall
+    -freverse-errors
+    -threaded
+    -rtsopts
+    -with-rtsopts=-N
+  build-depends:
+      base >= 4.7 && < 5
+    , webviewhs
+    , text
+  default-language: Haskell2010
+
+executable how-do-i-open-a-save-dialog
+  main-is: how-do-i-open-a-save-dialog.hs
+  hs-source-dirs:
+      .
+  ghc-options:
+    -Wall
+    -freverse-errors
+    -threaded
+    -rtsopts
+    -with-rtsopts=-N
+  build-depends:
+      base >= 4.7 && < 5
+    , webviewhs
+    , text
+  default-language: Haskell2010
+
+executable how-do-i-run-some-javascript-inside-the-window
+  main-is: how-do-i-run-some-javascript-inside-the-window.hs
+  hs-source-dirs:
+      .
+  ghc-options:
+    -Wall
+    -freverse-errors
+    -threaded
+    -rtsopts
+    -with-rtsopts=-N
+  build-depends:
+      base >= 4.7 && < 5
+    , webviewhs
+    , text
+    , jmacro
+  default-language: Haskell2010
+
+executable how-do-i-communicate-with-haskell-from-javascript
+  main-is: how-do-i-communicate-with-haskell-from-javascript.hs
+  hs-source-dirs:
+      .
+  ghc-options:
+    -Wall
+    -freverse-errors
+    -threaded
+    -rtsopts
+    -with-rtsopts=-N
+  build-depends:
+      base >= 4.7 && < 5
+    , webviewhs
+    , text
+    , bytestring
+    , aeson
+    , jmacro
+  default-language: Haskell2010
+
+executable how-do-i-inject-some-custom-css-into-the-window
+  main-is: how-do-i-inject-some-custom-css-into-the-window.hs
+  hs-source-dirs:
+      .
+  ghc-options:
+    -Wall
+    -freverse-errors
+    -threaded
+    -rtsopts
+    -with-rtsopts=-N
+  build-depends:
+      base >= 4.7 && < 5
+    , webviewhs
+    , text
+    , clay
+  default-language: Haskell2010
+
+executable how-do-i-log-some-debug-information
+  main-is: how-do-i-log-some-debug-information.hs
+  hs-source-dirs:
+      .
+  ghc-options:
+    -Wall
+    -freverse-errors
+    -threaded
+    -rtsopts
+    -with-rtsopts=-N
+  build-depends:
+      base >= 4.7 && < 5
+    , webviewhs
+    , text
+    , text-format-heavy
+  default-language: Haskell2010
