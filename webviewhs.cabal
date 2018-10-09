@@ -1,5 +1,5 @@
 name:           webviewhs
-version:        0.0.0.0
+version:        0.0.1.0
 synopsis:       Create native dialogs and windows that run web pages.
 description:    Please see the README on GitHub at <https://github.com/lettier/webviewhs#readme>
 category:         UI
@@ -50,10 +50,10 @@ library
     cc-options: -DWEBVIEW_GTK=1 -pthread
   else
     if os(darwin)
-      cc-options: -DWEBVIEW_COCOA=1 -ObjC -x objective-c
+      cc-options: -DWEBVIEW_COCOA=1
     else
       if os(windows)
-        cc-options: -DWEBVIEW_WINAPI=1 -mwindows
+        cc-options: -DWEBVIEW_WINAPI=1 -mwindows -std=c99
         extra-libraries: ole32 comctl32 oleaut32 uuid
   if os(linux)
     pkgconfig-depends:
@@ -61,8 +61,7 @@ library
       , webkit2gtk-4.0
   if os(darwin)
     frameworks:
-        Cocoa
-      , Webkit
+        Webkit
   ghc-options:
     -Wall
     -freverse-errors

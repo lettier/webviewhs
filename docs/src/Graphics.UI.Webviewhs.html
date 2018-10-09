@@ -17,7 +17,7 @@
   License     : BSD3
   Maintainer  : David Lettier
 
-  ![webviewhs logo](https://i.imgur.com/VeULsQK.png)
+  ![webviewhs logo](https://i.imgur.com/2yAJALE.png)
 
   webviewhs is a Haskell binding to the [webview](https://github.com/zserge/webview) library created by
   [Serge Zaitsev](https://github.com/zserge).

@@ -2,6 +2,28 @@
 
 ---
 
+## 0.0.1.0
+
+### Added
+
+-
+
+### Changed
+
+- Updated webview
+  - Commit
+    - 24af6cb9b33b3a10dce44188aec0c1646247d830
+  - Removes objective-c
+    - https://github.com/zserge/webview/pull/181
+- Updated logo
+
+### Removed
+
+- Objective-c requirement for macOS
+- Cocoa framework requirement for macOS
+
+---
+
 ## 0.0.0.0
 
 ### Added

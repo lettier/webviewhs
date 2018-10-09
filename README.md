@@ -1,4 +1,4 @@
-![webviewhs logo](https://i.imgur.com/MOmkahs.png)
+![webviewhs logo](https://i.imgur.com/yohrYgX.png)
 
 # What is webviewhs?
 
