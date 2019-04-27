@@ -1,5 +1,5 @@
 name:           webviewhs
-version:        0.0.1.0
+version:        0.0.2.0
 synopsis:       Create native dialogs and windows that run web pages.
 description:    Please see the README on GitHub at <https://github.com/lettier/webviewhs#readme>
 category:         UI

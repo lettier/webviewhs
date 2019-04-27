@@ -2,6 +2,30 @@
 
 ---
 
+## 0.0.2.0
+
+### Added
+
+-
+
+### Changed
+
+- Updated webview
+  - Commits
+    - Fixed bug in Windows 7 where window does not close
+      - 16c93bcaeaeb6aa7bb5a1432de3bef0b9ecc44f3
+      - https://github.com/zserge/webview/pull/229
+    - Add IInternetSecurityManager to override any IE settings.
+      - f390a2df9ec50d1bce389f0656a215a5504dce04
+      - https://github.com/zserge/webview/pull/199
+- Updated version in documentation
+
+### Removed
+
+-
+
+---
+
 ## 0.0.1.0
 
 ### Added
