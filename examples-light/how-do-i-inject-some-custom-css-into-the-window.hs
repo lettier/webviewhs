@@ -9,7 +9,6 @@
 #-}
 
 import Data.Text
-import Clay
 import qualified Graphics.UI.Webviewhs as WHS
 
 main :: IO ()
@@ -33,18 +32,15 @@ main =
     -- This function runs every window loop.
     -- Return True to continue the loop or False to exit the loop.
     $ \ window -> do
-      -- injectCss returns either True on success or False on failure.
-      -- injectCss uses Clay a "a CSS preprocessor like LESS and Sass,
-      -- but implemented as an embedded domain specific language (EDSL) in Haskell."
-      success <-
-        WHS.injectCss
-          window $
-          -- This turns all <div> text blue.
-          Clay.div Clay.?
-            Clay.color "#0000ff"
+      let color = "#0000ff"
+      -- injectCss' returns either True on success or False on failure.
       -- If you rather not use Clay, you can use injectCss'.
-      success' <-
+      success <-
         WHS.injectCss'
           window
-          "body { background-color: white !important; }"
-      return $ success && success'
+          $ Data.Text.concat
+              [ "div { color: "
+              , color
+              , "; }"
+              ]
+      return success

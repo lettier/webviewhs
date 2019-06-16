@@ -11,6 +11,7 @@
 #-}
 
 import GHC.Generics
+import Control.Monad
 import Data.Text
 import Data.Text.Encoding
 import Data.ByteString.Lazy
@@ -20,7 +21,7 @@ import qualified Graphics.UI.Webviewhs as WHS
 
 data JsonMessage =
   JsonMessage
-    { message :: Text
+    { _message :: Text
     } deriving (Generic, Show)
 
 instance FromJSON JsonMessage
@@ -42,10 +43,14 @@ main =
     (\ _window stringFromJavaScript -> do
       print stringFromJavaScript
       print (decode (fromStrict $ encodeUtf8 stringFromJavaScript) :: Maybe JsonMessage)
-    ) $
+    )
+    -- This function runs before the loop.
+    (WHS.WithWindowLoopSetUp    (\ _window -> print ("Setting up." :: Data.Text.Text)))
+    -- This function runs after the loop.
+    (WHS.WithWindowLoopTearDown (void . return . const))
     -- This function runs every window loop.
     -- Return True to continue the loop or False to exit the loop.
-    \ window -> do
+    $ \ window -> do
       let message' = "Hello from JavaScript." :: Text
       -- runJavaScript returns either True on success or False on failure.
       success <-

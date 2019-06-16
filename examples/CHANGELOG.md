@@ -2,6 +2,22 @@
 
 ---
 
+## 0.0.1.0
+
+### Added
+
+-
+
+### Changed
+
+- withWindowLoop to use WithWindowLoopSetUp and WithWindowLoopTearDown
+
+### Removed
+
+-
+
+---
+
 ## 0.0.0.0
 
 ### Added

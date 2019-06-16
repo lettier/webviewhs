@@ -8,6 +8,7 @@
       ForeignFunctionInterface
     , NamedFieldPuns
     , OverloadedStrings
+    , CPP
 #-}
 
 {-|
@@ -31,6 +32,10 @@
   [README](https://github.com/zserge/webview/blob/d007fc53b107f6043c2a6a3372548dbf59dfe876/README.md).
 
   Be sure to explore the provided [examples](https://github.com/lettier/webviewhs/tree/master/examples#readme).
+
+  To exclude clay, jmacro, and text-format-heavy, use the cabal build flag `light`.
+  Be sure to explore the provided [light examples](https://github.com/lettier/webviewhs/tree/master/examples-light#readme)
+  for more information.
 -}
 
 module Graphics.UI.Webviewhs
@@ -38,6 +43,8 @@ module Graphics.UI.Webviewhs
   , WindowBackgroundColor(..)
   , WindowAlertDialogType(..)
   , Window
+  , WithWindowLoopSetUp(..)
+  , WithWindowLoopTearDown(..)
   , createWindowAndBlock
   , createWindow
   , setWindowTitle
@@ -45,15 +52,17 @@ module Graphics.UI.Webviewhs
   , setWindowBackgroundColor
   , withWindowLoop
   , iterateWindowLoop
-  , runJavaScript
   , runJavaScript'
+#ifndef LIGHT
+  , runJavaScript
   , injectCss
+  , Graphics.UI.Webviewhs.log
+#endif
   , injectCss'
   , openWindowAlertDialog
   , withWindowOpenDialog
   , withWindowSaveDialog
   , dispatchToMain
-  , Graphics.UI.Webviewhs.log
   , Graphics.UI.Webviewhs.log'
   , terminateWindowLoop
   , destroyWindow
@@ -67,10 +76,13 @@ import Control.Monad
 import Control.Concurrent.MVar
 import Data.Word
 import Data.Text
+
+#ifndef LIGHT
 import qualified Data.Text.Lazy as DTL
-import Data.Text.Format.Heavy
 import Language.Javascript.JMacro
+import Data.Text.Format.Heavy
 import Clay (Css, render)
+#endif
 
 -- | Pointer to a webview struct.
 type Window = Ptr
@@ -86,7 +98,7 @@ data WindowParams =
     , windowParamsResizable  :: Bool
     -- | This enables the right click context menu with reload and
     -- Web Inspector options for GTK WebKit and Cocoa WebKit.
-    -- When using WebKit, it also enables JavaScript console.log
+    -- When using WebKit, it also enables JavaScript `console.log`
     -- and similar methods the ability to write to stdout.
     -- It has no affect on Windows.
     -- According to webview, "on Windows there is no easy to way to enable
@@ -118,6 +130,9 @@ data  WindowAlertDialogType =
       WindowAlertDialogTypeInfo
     | WindowAlertDialogTypeWarning
     | WindowAlertDialogTypeError
+
+newtype WithWindowLoopSetUp    a = WithWindowLoopSetUp    (Window a -> IO ())
+newtype WithWindowLoopTearDown a = WithWindowLoopTearDown (Window a -> IO ())
 
 windowDialogTypeAlert :: CInt
 windowDialogTypeAlert = 2
@@ -311,9 +326,9 @@ setWindowTitle
 -- Pass 'True' to put the window into fullscreen mode.
 -- Pass 'False' to take the window out of fullscreen mode.
 setWindowFullscreen
-  :: Window a
-  -> Bool
-  -> IO ()
+  ::  Window a
+  ->  Bool
+  ->  IO ()
 setWindowFullscreen
   window
   fullscreen
@@ -324,9 +339,9 @@ setWindowFullscreen
 -- | If the loaded web page does not specify a background color,
 -- this sets the window's background color.
 setWindowBackgroundColor
-  :: Window a
-  -> WindowBackgroundColor
-  -> IO ()
+  ::  Window a
+  ->  WindowBackgroundColor
+  ->  IO ()
 setWindowBackgroundColor
   window
   WindowBackgroundColor
@@ -362,20 +377,6 @@ iterateWindowLoop
   return (result == 0)
 
 -- | Runs the given JavaScript inside the window.
--- Uses [Language.Javascript.JMacro](https://hackage.haskell.org/package/jmacro).
-runJavaScript
-  :: (JsToDoc js, JMacro js)
-  =>  Window a
-  ->  js
-  ->  IO Bool -- ^ Returns 'True' on success and 'False' on failure.
-runJavaScript
-  window
-  javaScript
-  = do
-  let javaScript' = Data.Text.pack $ show $ renderJs javaScript
-  runJavaScript' window javaScript'
-
--- | Runs the given JavaScript inside the window.
 -- The given JavaScript is not checked for validity.
 runJavaScript'
   ::  Window a
@@ -390,20 +391,6 @@ runJavaScript'
   free javaScript'
   return (result /= -1)
 
--- | Injects CSS into the window.
--- Uses [Clay](https://hackage.haskell.org/package/clay).
-injectCss
-  ::  Window a
-  ->  Clay.Css
-  ->  IO Bool -- ^ Returns 'True' on success and 'False' on failure.
-injectCss
-  window
-  css
-  =
-  injectCss'
-    window $
-      DTL.toStrict $
-        Clay.render css
 
 -- | Injects CSS into the window.
 -- The given CSS is not checked for validity.
@@ -545,21 +532,6 @@ dispatchToMain
   freeHaskellFunPtr funPtr
   return ()
 
--- | Logs the given formatted input to stderr, macOS console,
--- or Windows DebugView depending on the build platform.
--- Uses [Data.Text.Format.Heavy](https://hackage.haskell.org/package/text-format-heavy).
-log
-  ::  VarContainer vars
-  =>  Format
-  ->  vars
-  ->  IO ()
-log
-  fmt
-  vars
-  = do
-  let entry = format fmt vars
-  log' $ DTL.toStrict entry
-
 -- | Logs the given input to stderr, macOS console,
 -- or Windows DebugView depending on the build platform.
 log'
@@ -585,30 +557,42 @@ destroyWindow
   ->  IO ()
 destroyWindow = c_destroy_window
 
--- | Creates a window for you.
--- Accepts a function that is called with each iteration of
--- the window loop.
--- If the accepted function returns 'False',
--- the loop is exited and the window is destroyed.
--- If the accepted function returns 'True',
--- the loop is continued provided it can.
+-- | Manages the window and main loop for you.
+-- It accepts a JavaScript callback, setup, teardown, and iteration function.
 withWindowLoop
   ::  WindowParams
   ->  (Window a -> Text -> IO ()) -- ^ A callback function that can be invoked from the JavaScript side.
                                   -- The callback must accept a 'Window' and the JavaScript sent 'Text'.
                                   -- The JavaScript sent 'Text' could be unstructured or structured like JSON.
-  ->  (Window a -> IO Bool) -- ^ Return 'True' to continue or 'False' to stop.
+  ->  WithWindowLoopSetUp    a    -- ^ A function that is called before iterating.
+                                  -- It must accept a 'Window' and return 'IO' ().
+                                  -- Use it to set up before entering the main loop.
+                                  -- You can pass 'void' '.' 'return' '.' 'const' if you
+                                  -- don't have a setup function.
+  ->  WithWindowLoopTearDown a    -- ^ A function that is called after iterating.
+                                  -- It must accept a 'Window' and return 'IO' ().
+                                  -- Use it to tear down after leaving the main loop.
+                                  -- You can pass 'void' '.' 'return' '.' 'const' if you
+                                  -- don't have a teardown function.
+                                  -- Note, do not terminate the window loop and/or
+                                  -- destroy the window as this is done for you.
+  ->  (Window a -> IO Bool)       -- ^ A function that is called each iteration.
+                                  -- Return 'True' to continue or 'False' to stop iterating.
   ->  IO ()
 withWindowLoop
   windowParams
   callback
+  (WithWindowLoopSetUp setUp)
+  (WithWindowLoopTearDown tearDown)
   iteration
   = do
   eitherWindow   <- createWindow windowParams callback
   case eitherWindow of
     Left  e      -> putStrLn $ Data.Text.unpack e
     Right window -> do
+      setUp               window
       loop                window iteration
+      tearDown            window
       terminateWindowLoop window
       destroyWindow       window
   where
@@ -618,6 +602,55 @@ withWindowLoop
       shouldContinue  <- iterateWindowLoop window False
       when (continue && shouldContinue) $
         loop window iteration'
+
+#ifndef LIGHT
+-- | Runs the given JavaScript inside the window.
+-- Uses [Language.Javascript.JMacro](https://hackage.haskell.org/package/jmacro).
+-- Note, this function is not available when using the `light` cabal build flag.
+runJavaScript
+  ::  (JsToDoc js, JMacro js)
+  =>  Window a
+  ->  js
+  ->  IO Bool -- ^ Returns 'True' on success and 'False' on failure.
+runJavaScript
+  window
+  javaScript
+  = do
+  let javaScript' = Data.Text.pack $ show $ renderJs javaScript
+  runJavaScript' window javaScript'
+
+-- | Injects CSS into the window.
+-- Uses [Clay](https://hackage.haskell.org/package/clay).
+-- Note, this function is not available when using the `light` cabal build flag.
+injectCss
+  ::  Window a
+  ->  Clay.Css
+  ->  IO Bool -- ^ Returns 'True' on success and 'False' on failure.
+injectCss
+  window
+  css
+  =
+  injectCss'
+    window $
+      DTL.toStrict $
+        Clay.render css
+
+-- | Logs the given formatted input to stderr, macOS console,
+-- or Windows DebugView depending on the build platform.
+-- Uses [Data.Text.Format.Heavy](https://hackage.haskell.org/package/text-format-heavy).
+-- Note, this function is not available when using the `light` cabal build flag.
+log
+  ::  VarContainer vars
+  =>  Format
+  ->  vars
+  ->  IO ()
+log
+  fmt
+  vars
+  = do
+  let entry = format fmt vars
+  log' $ DTL.toStrict entry
+#endif
 
 windowParamsToC
   ::  WindowParams

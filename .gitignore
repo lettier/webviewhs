@@ -4,8 +4,13 @@
 dist/*
 haddock/*
 hackage-docs-archive/*
+*cabal.config*
 cabal.sandbox.config
 examples/.cabal-sandbox/*
 examples/.stack-work/*
 examples/dist/*
 examples/caba.sandbox.config
+examples-light/.cabal-sandbox/*
+examples-light/.stack-work/*
+examples-light/dist/*
+examples-light/caba.sandbox.config

@@ -21,7 +21,7 @@
 
 ## How do I build and run these examples?
 
-If you have stack:
+If you're using stack:
 
 ```bash
 stack build && \
@@ -43,12 +43,11 @@ stack exec -- how-do-i-inject-some-custom-css-into-the-window && \
 stack exec -- how-do-i-log-some-debug-information
 ```
 
-If you have cabal:
+If you're using cabal:
 
 ```bash
 cabal sandbox init && \
 cabal sandbox add-source ../ && \
-cabal --require-sandbox install -j --dependencies-only && \
 cabal --require-sandbox install -j && \
 cabal --require-sandbox exec -- how-do-i-create-a-window-and-have-it-run-itself && \
 cabal --require-sandbox exec -- how-do-i-create-a-window && \

@@ -1,0 +1,10 @@
+resolver: lts-9.21
+packages:
+  - '.'
+  - '..'
+explicit-setup-deps:
+  ! '*': true
+compiler-check: match-exact
+flags:
+  webviewhs:
+    light: true

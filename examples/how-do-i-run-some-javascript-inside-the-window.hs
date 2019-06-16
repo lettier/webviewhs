@@ -26,10 +26,14 @@ main =
       , WHS.windowParamsDebuggable = True
       }
     -- This is the callback JavaScript can execute.
-    (\ _window stringFromJavaScript -> print stringFromJavaScript) $
+    (\ _window stringFromJavaScript -> print stringFromJavaScript)
+    -- This function runs before the loop.
+    (WHS.WithWindowLoopSetUp    (\ _window -> print ("Setting up." :: Data.Text.Text)))
+    -- This function runs after the loop.
+    (WHS.WithWindowLoopTearDown (\ _window -> print ("Tearing down." :: Data.Text.Text)))
     -- This function runs every window loop.
     -- Return True to continue the loop or False to exit the loop.
-    \ window -> do
+    $ \ window -> do
       let string = "Hello from Haskell." :: Text
       -- runJavaScript returns either True on success or False on failure.
       WHS.runJavaScript

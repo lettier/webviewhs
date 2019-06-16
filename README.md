@@ -86,7 +86,8 @@ much like stack.
 
 ## How do I use webviewhs?
 
-If you want to open up a native desktop window that loads a web page and manages itself, do the following:
+If you want to open up a native desktop window that loads a web page and manages itself,
+do the following:
 
 ```haskell
 {-# LANGUAGE
@@ -129,11 +130,13 @@ import qualified Graphics.UI.Webviewhs as WHS
 
 main :: IO ()
 main = do
-  -- Create a channel to communicate between the main thread and another thread we'll create.
+  -- Create a channel to communicate between the main thread and another thread you'll create.
   -- This isn't necessary but it's a great way to communicate between threads.
   channel <- newBoundedChan 1
+
   -- withWindowLoop handles the creation, iteration, and deletion of the window.
   WHS.withWindowLoop
+
     -- Set the window creation params.
     WHS.WindowParams
       { WHS.windowParamsTitle      = "Test"
@@ -144,24 +147,38 @@ main = do
       , WHS.windowParamsResizable  = True
       , WHS.windowParamsDebuggable = True -- Enables the Web Inspector if using WebKit.
       }
+
     -- webview allows you to specify a callback function that can be
     -- called from the JavaScript side.
     -- The callback receives a single string parameter.
     -- This could be unstructured text or unparsed JSON for example.
-    -- We'll just print what we received.
+    -- You can just print what was received for now.
     (\ _window stringFromJavaScript -> print stringFromJavaScript)
+
+    -- This function runs before the loop.
+    (WHS.WithWindowLoopSetUp    (\ _window -> print "Setting up."))
+
+    -- This function runs after the loop.
+    (WHS.WithWindowLoopTearDown (\ _window -> print "Tearing down."))
+
+    -- If you don't need to set up and/or tear down anything, you can do this.
+    -- (WHS.WithWindowLoopSetUp    (void . return . const))
+    -- (WHS.WithWindowLoopTearDown (void . return . const))
+
     -- This function is called continuously.
     -- Return True to continue the window loop or
     -- return False to exit the loop and destroy the window.
     $ \ window -> do
+
       -- webviewhs provides log and log'.
-      -- log uses text-format-heavy which provides a "full-featured string
-      -- formatting function, similar to Python's string.format."
+      -- log uses text-format-heavy which provides a
+      -- "full-featured string formatting function, similar to Python's string.format."
       -- log' takes a simple Text string.
       -- According to webview, logging will print to
       -- "stderr, MacOS Console or [Windows] DebugView."
       let string = "world" :: Text
       WHS.log "Hello {string}!" [("string" :: DTL.Text, Variable string)]
+
       -- webview allows you to run JS inside the window.
       -- webviewhs comes with runJavaScript and runJavaScript'.
       -- runJavaScript uses JMacro which is a
@@ -170,8 +187,9 @@ main = do
       let red = "red" :: Text
       _ <- WHS.runJavaScript
         window
+
         -- This changes the web page background color to red.
-        -- Notice that we can use Haskell values inside the JavaScript and
+        -- Notice that you can use Haskell values inside the JavaScript and
         -- even use Haskell like syntax.
         [jmacro|
           fun setBackgroundColor color { document.body.style.backgroundColor = color; }
@@ -180,53 +198,104 @@ main = do
             5000
           );
         |]
+
       -- webview allows you to inject CSS into the window.
       -- webviewhs offers injectCss and injectCss'.
       -- injectCss uses Clay "a CSS preprocessor like LESS and Sass,
       -- but implemented as an embedded domain specific language (EDSL) in Haskell."
       -- injectCss' takes a Text string which may or may not be valid CSS.
       _ <- WHS.injectCss
-        window $
-          -- This turns all <div> text blue.
-          Clay.div Clay.?
-            Clay.color "#0000ff"
-      -- Inside the window loop, we'll create a thread.
+        window
+
+        -- This turns all <div> text blue.
+        $ Clay.div Clay.?
+          Clay.color "#0000ff"
+
+      -- Inside the window loop, create a thread.
       _ <- forkIO $ do
         WHS.log' "Hello from inside a thread."
-        -- When we're not in the main window UI thread, we need to call
-        -- dispatchToMain if we want to interact with the window.
+
+        -- When you're not in the main window UI thread, you'll need to call
+        -- dispatchToMain if you want to interact with the window.
         -- dispatchToMain will run the given function in the main UI thread.
         -- Note that dispatchToMain runs the function asynchronously with no guarantee
         -- as to when it will run.
-        WHS.dispatchToMain window $ \ window' -> do
-          result <-
-            WHS.runJavaScript
-              window'
-              -- This will randomly scroll the web page up and down.
-              [jmacro|
-                if (Math.random() < 0.1) {
-                  setTimeout(
-                    function() {
-                      window.scrollTo(0, Math.random() * window.innerHeight);
-                    },
-                    10000
-                  );
-                }
-              |]
-          -- runJavaScript returns True if it was successful and
-          -- False if something went wrong.
-          -- Here we attempt to write the result to our channel.
-          void $ CCBC.tryWriteChan channel result
-      -- Exit the loop if we read False from the channel.
+        WHS.dispatchToMain
+          window
+          $ \ window' -> do
+            result <-
+              WHS.runJavaScript
+                window'
+
+                -- This will randomly scroll the web page up and down.
+                [jmacro|
+                  if (Math.random() < 0.1) {
+                    setTimeout(
+                      function() {
+                        window.scrollTo(0, Math.random() * window.innerHeight);
+                      },
+                      10000
+                    );
+                  }
+                |]
+
+            -- runJavaScript returns True if it was successful and
+            -- False if something went wrong.
+            -- Here is an attempt to write the result to the channel.
+            void $ CCBC.tryWriteChan channel result
+
+      -- Exit the loop if you read False from the channel.
       -- Note that tryReadChan does not block which is
       -- important when inside the window loop.
       fromMaybe True <$> tryReadChan channel
-  -- At this point we've exited the window loop,
-  -- destroyed the window,
-  -- and will now exit the program.
+
+  -- At this point,
+  -- the loop has been exited,
+  -- the window has been destroyed,
+  -- and the program will now exit.
 ```
 
-For more ways to use webviewhs, take a look at the [examples](examples) directory.
+For more ways to use webviewhs,
+take a look at the [examples](examples) directory.
+
+## What if I don't want clay, jmacro, and text-format-heavy?
+
+webviewhs has a `light` build flag that removes the dependencies clay, jmacro, and text-format-heavy.
+In some cases, using the `light` build flag can reduce the final binary size by 77%.
+
+Note that the `light` build flag removes `runJavaScript`, `injectCss`, and `log` from the API.
+You can still use `runJavaScript'`, `injectCss'`, and `log'`.
+
+If you're using stack, you can supply the `light` flag in the `stack.yaml` file.
+
+```yaml
+flags:
+  webviewhs:
+    light: true
+```
+
+You can also supply the `light` flag on the command line like so.
+
+```bash
+stack build --flag webviewhs:light
+```
+
+If you're using cabal, you'll have to supply a constraint for all configure and install commands.
+
+```bash
+# For configure.
+cabal configure  --constraint="webviewhs +light"
+
+# For install.
+cabal install -j --constraint="webviewhs +light"
+```
+
+There's currently no way to supply the constraint in the cabal file itself,
+however,
+there is an [open issue](https://github.com/haskell/cabal/issues/2821) about it.
+
+For more information about using the light version of webviewhs,
+take a look at the [examples-light](examples-light) directory.
 
 ## What is the license?
 

@@ -1,5 +1,5 @@
 name:           webviewhs-examples
-version:        0.0.0.0
+version:        0.0.1.0
 description:    Please see the README on GitHub at <https://github.com/lettier/examples/webviewhs#readme>
 homepage:       https://github.com/lettier/webviewhs/examples#readme
 bug-reports:    https://github.com/lettier/webviewhs/issues
@@ -136,6 +136,7 @@ executable how-do-i-run-my-own-function-in-the-window-loop
   build-depends:
       base >= 4.7 && < 5
     , random
+    , text
     , webviewhs
     , jmacro
   default-language: Haskell2010
@@ -153,6 +154,7 @@ executable how-do-i-run-some-function-in-the-main-window-thread-while-in-some-ot
   build-depends:
       base >= 4.7 && < 5
     , random
+    , text
     , webviewhs
     , jmacro
   default-language: Haskell2010

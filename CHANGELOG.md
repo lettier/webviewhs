@@ -2,6 +2,31 @@
 
 ---
 
+## 0.1.0.0
+
+### Added
+
+- Cabal build flag light
+  - If enabled
+    - Removes
+      - clay, jmacro, and text-format-heavy
+      - runJavaScript, injectCss, and log from the API
+- examples-light directory
+- WithWindowLoopSetUp
+- WithWindowLoopTearDown
+
+### Changed
+
+- withWindowLoop
+  - It now requires a setup and teardown function
+- Documentation
+
+### Removed
+
+-
+
+---
+
 ## 0.0.2.0
 
 ### Added

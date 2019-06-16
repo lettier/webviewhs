@@ -6,17 +6,29 @@
 
 {-# LANGUAGE
     OverloadedStrings
+  , DeriveGeneric
+  , QuasiQuotes
 #-}
 
+import GHC.Generics
 import Data.Text
-import Clay
+import Data.Text.Encoding
+import Data.ByteString.Lazy
+import Data.Aeson
 import qualified Graphics.UI.Webviewhs as WHS
+
+data JsonMessage =
+  JsonMessage
+    { _message :: Text
+    } deriving (Generic, Show)
+
+instance FromJSON JsonMessage
 
 main :: IO ()
 main =
   WHS.withWindowLoop
     WHS.WindowParams
-      { WHS.windowParamsTitle      = "webviewhs - How do I inject some custom CSS into the Window?"
+      { WHS.windowParamsTitle      = "webviewhs - How do I communicate with Haskell from JavaScript?"
         -- This could be a localhost URL to your single-page application (SPA).
       , WHS.windowParamsUri        = "https://lettier.github.com"
       , WHS.windowParamsWidth      = 800
@@ -25,7 +37,11 @@ main =
       , WHS.windowParamsDebuggable = True
       }
     -- This is the callback JavaScript can execute.
-    (\ _window text -> print text)
+    -- Inside JavaScript, you call "window.external.invoke".
+    (\ _window stringFromJavaScript -> do
+      print stringFromJavaScript
+      print (decode (fromStrict $ encodeUtf8 stringFromJavaScript) :: Maybe JsonMessage)
+    )
     -- This function runs before the loop.
     (WHS.WithWindowLoopSetUp    (\ _window -> print ("Setting up." :: Data.Text.Text)))
     -- This function runs after the loop.
@@ -33,18 +49,14 @@ main =
     -- This function runs every window loop.
     -- Return True to continue the loop or False to exit the loop.
     $ \ window -> do
-      -- injectCss returns either True on success or False on failure.
-      -- injectCss uses Clay a "a CSS preprocessor like LESS and Sass,
-      -- but implemented as an embedded domain specific language (EDSL) in Haskell."
+      let message' = "Hello from JavaScript." :: Text
+      -- runJavaScript' returns either True on success or False on failure.
       success <-
-        WHS.injectCss
-          window $
-          -- This turns all <div> text blue.
-          Clay.div Clay.?
-            Clay.color "#0000ff"
-      -- If you rather not use Clay, you can use injectCss'.
-      success' <-
-        WHS.injectCss'
+        WHS.runJavaScript'
           window
-          "body { background-color: white !important; }"
-      return $ success && success'
+          $ Data.Text.concat
+              [ "window.external.invoke(JSON.stringify({ message: \""
+              , message'
+              , "\" }));"
+              ]
+      return success

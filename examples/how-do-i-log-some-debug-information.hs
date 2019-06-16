@@ -26,10 +26,14 @@ main =
       , WHS.windowParamsDebuggable = True
       }
     -- This is the callback JavaScript can execute.
-    (\ _window text -> print text) $
-      -- This function runs every window loop.
-      -- Return True to continue the loop or False to exit the loop.
-    \ _window -> do
+    (\ _window text -> print text)
+    -- This function runs before the loop.
+    (WHS.WithWindowLoopSetUp    (\ _window -> print ("Setting up." :: Data.Text.Text)))
+    -- This function runs after the loop.
+    (WHS.WithWindowLoopTearDown (\ _window -> print ("Tearing down." :: Data.Text.Text)))
+    -- This function runs every window loop.
+    -- Return True to continue the loop or False to exit the loop.
+    $ \ _window -> do
       -- webviewhs provides log and log'.
       -- log uses text-format-heavy which provides a "full-featured string
       -- formatting function, similar to Python's string.format."

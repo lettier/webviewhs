@@ -1,0 +1,69 @@
+name:           webviewhs-examples-light
+version:        0.0.1.0
+description:    Please see the README on GitHub at <https://github.com/lettier/examples-light/webviewhs#readme>
+homepage:       https://github.com/lettier/webviewhs/examples-light#readme
+bug-reports:    https://github.com/lettier/webviewhs/issues
+author:         David Lettier
+maintainer:     David Lettier
+copyright:      (C) 2018 David Lettier
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+cabal-version:  >= 1.10
+
+extra-source-files:
+    ./CHANGELOG.md
+
+source-repository head
+  type: git
+  location: https://github.com/lettier/webviewhs
+
+executable how-do-i-communicate-with-haskell-from-javascript
+  main-is: how-do-i-communicate-with-haskell-from-javascript.hs
+  hs-source-dirs:
+      .
+  ghc-options:
+    -Wall
+    -freverse-errors
+    -threaded
+    -rtsopts
+    -with-rtsopts=-N
+  build-depends:
+      base >= 4.7 && < 5
+    , webviewhs
+    , text
+    , bytestring
+    , aeson
+  default-language: Haskell2010
+
+executable how-do-i-inject-some-custom-css-into-the-window
+  main-is: how-do-i-inject-some-custom-css-into-the-window.hs
+  hs-source-dirs:
+      .
+  ghc-options:
+    -Wall
+    -freverse-errors
+    -threaded
+    -rtsopts
+    -with-rtsopts=-N
+  build-depends:
+      base >= 4.7 && < 5
+    , webviewhs
+    , text
+  default-language: Haskell2010
+
+executable how-do-i-log-some-debug-information
+  main-is: how-do-i-log-some-debug-information.hs
+  hs-source-dirs:
+      .
+  ghc-options:
+    -Wall
+    -freverse-errors
+    -threaded
+    -rtsopts
+    -with-rtsopts=-N
+  build-depends:
+      base >= 4.7 && < 5
+    , webviewhs
+    , text
+  default-language: Haskell2010

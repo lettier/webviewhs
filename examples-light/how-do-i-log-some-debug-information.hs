@@ -9,14 +9,13 @@
 #-}
 
 import Data.Text
-import Clay
 import qualified Graphics.UI.Webviewhs as WHS
 
 main :: IO ()
 main =
   WHS.withWindowLoop
     WHS.WindowParams
-      { WHS.windowParamsTitle      = "webviewhs - How do I inject some custom CSS into the Window?"
+      { WHS.windowParamsTitle      = "webviewhs - How do I log some debug information?"
         -- This could be a localhost URL to your single-page application (SPA).
       , WHS.windowParamsUri        = "https://lettier.github.com"
       , WHS.windowParamsWidth      = 800
@@ -32,19 +31,14 @@ main =
     (WHS.WithWindowLoopTearDown (\ _window -> print ("Tearing down." :: Data.Text.Text)))
     -- This function runs every window loop.
     -- Return True to continue the loop or False to exit the loop.
-    $ \ window -> do
-      -- injectCss returns either True on success or False on failure.
-      -- injectCss uses Clay a "a CSS preprocessor like LESS and Sass,
-      -- but implemented as an embedded domain specific language (EDSL) in Haskell."
-      success <-
-        WHS.injectCss
-          window $
-          -- This turns all <div> text blue.
-          Clay.div Clay.?
-            Clay.color "#0000ff"
-      -- If you rather not use Clay, you can use injectCss'.
-      success' <-
-        WHS.injectCss'
-          window
-          "body { background-color: white !important; }"
-      return $ success && success'
+    $ \ _window -> do
+      -- webviewhs provides log'.
+      let string = "world" :: Text
+      -- log' takes a simple Text string.
+      WHS.log'
+        $ Data.Text.concat
+            [ "Hello "
+            , string
+            , "!"
+            ]
+      return True
