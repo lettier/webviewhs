@@ -1,12 +1,24 @@
 # webviewhs Examples
 
----
+## 0.0.2.0
+
+### Added
+
+- how-do-i-inline-an-html-page-on-start-up
+
+### Changed
+
+-
+
+### Removed
+
+-
 
 ## 0.0.1.0
 
 ### Added
 
--
+- how-do-i-inline-an-html-page-on-start-up
 
 ### Changed
 
@@ -15,8 +27,6 @@
 ### Removed
 
 -
-
----
 
 ## 0.0.0.0
 

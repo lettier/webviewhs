@@ -16,6 +16,7 @@
 - [How do I open a save dialog?](how-do-i-open-a-save-dialog.hs)
 - [How do I run some JavaScript inside the window?](how-do-i-run-some-javascript-inside-the-window.hs)
 - [How do I communicate with Haskell from JavaScript?](how-do-i-communicate-with-haskell-from-javascript.hs)
+- [How do I inline an HTML page on start up?](how-do-i-inline-an-html-page-on-start-up.hs)
 - [How do I inject some custom CSS into the Window?](how-do-i-inject-some-custom-css-into-the-window.hs)
 - [How do I log some debug information?](how-do-i-log-some-debug-information.hs)
 
@@ -39,6 +40,7 @@ stack exec -- how-do-i-open-an-open-dialog && \
 stack exec -- how-do-i-open-a-save-dialog && \
 stack exec -- how-do-i-run-some-javascript-inside-the-window && \
 stack exec -- how-do-i-communicate-with-haskell-from-javascript && \
+stack exec -- how-do-i-inline-an-html-page-on-start-up && \
 stack exec -- how-do-i-inject-some-custom-css-into-the-window && \
 stack exec -- how-do-i-log-some-debug-information
 ```
@@ -63,6 +65,7 @@ cabal --require-sandbox exec -- how-do-i-open-an-open-dialog && \
 cabal --require-sandbox exec -- how-do-i-open-a-save-dialog && \
 cabal --require-sandbox exec -- how-do-i-run-some-javascript-inside-the-window && \
 cabal --require-sandbox exec -- how-do-i-communicate-with-haskell-from-javascript && \
+cabal --require-sandbox exec -- how-do-i-inline-an-html-page-on-start-up && \
 cabal --require-sandbox exec -- how-do-i-inject-some-custom-css-into-the-window && \
 cabal --require-sandbox exec -- how-do-i-log-some-debug-information
 ```

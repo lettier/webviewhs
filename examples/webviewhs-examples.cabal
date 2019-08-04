@@ -1,5 +1,5 @@
 name:           webviewhs-examples
-version:        0.0.1.0
+version:        0.0.2.0
 description:    Please see the README on GitHub at <https://github.com/lettier/examples/webviewhs#readme>
 homepage:       https://github.com/lettier/webviewhs/examples#readme
 bug-reports:    https://github.com/lettier/webviewhs/issues
@@ -239,6 +239,23 @@ executable how-do-i-communicate-with-haskell-from-javascript
     , text
     , bytestring
     , aeson
+    , jmacro
+  default-language: Haskell2010
+
+executable how-do-i-inline-an-html-page-on-start-up
+  main-is: how-do-i-inline-an-html-page-on-start-up.hs
+  hs-source-dirs:
+      .
+  ghc-options:
+    -Wall
+    -freverse-errors
+    -threaded
+    -rtsopts
+    -with-rtsopts=-N
+  build-depends:
+      base >= 4.7 && < 5
+    , webviewhs
+    , text
     , jmacro
   default-language: Haskell2010
 
