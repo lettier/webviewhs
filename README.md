@@ -109,6 +109,47 @@ main = do
       }
 ```
 
+You can also control the window loop to indicate webviewhs how to process each frame:
+
+```haskell
+{-# LANGUAGE
+    OverloadedStrings
+#-}
+
+import qualified Graphics.UI.Webviewhs as WHS
+
+main :: IO ()
+main = do
+  eitherWindow <- WHS.createWindow windowParams windowCallback
+  case eitherWindow of
+    Left  _      -> pure ()
+    Right window -> do
+      windowLoop window
+      WHS.terminateWindowLoop window
+      WHS.destroyWindow window
+  where
+    windowParams = WHS.WindowParams
+      { WHS.windowParamsTitle      = "Test"
+      , WHS.windowParamsUri        = "https://lettier.github.io"
+      , WHS.windowParamsWidth      = 800
+      , WHS.windowParamsHeight     = 600
+      , WHS.windowParamsResizable  = True
+      , WHS.windowParamsDebuggable = True
+      }
+
+    -- This can be called from Html/JS as "window.external.invoke(msg)"
+    windowCallback window msg = print msg
+
+    -- Process a single frame using iterate
+    windowLoop window = do
+      shouldContinue <- WHS.iterateWindowLoop window False
+      if shouldContinue
+      then $ do
+        threadDelay 10000 -- wait some microsecs before next frame
+        windowLoop window
+      else pure ()
+```
+
 If you want more control over the native desktop window, you could do something like this:
 
 ```haskell
