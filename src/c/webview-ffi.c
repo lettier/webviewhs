@@ -9,6 +9,39 @@
 #include "webview.h"
 #include "webview-ffi.h"
 
+#include "stdio.h"
+#include "stdlib.h"
+#include "string.h"
+
+#define CSS_INJECT_FUNCTION                                                    \
+  "(function(e){var "                                                          \
+  "t=document.createElement('style'),d=document.head||document."               \
+  "getElementsByTagName('head')[0];t.setAttribute('type','text/"               \
+  "css'),t.styleSheet?t.styleSheet.cssText=e:t.appendChild(document."          \
+  "createTextNode(e)),d.appendChild(t)})"
+
+static int webview_js_encode(const char *s, char *esc, size_t n) {
+  int r = 1; /* At least one byte for trailing zero */
+  for (; *s; s++) {
+    const unsigned char c = *s;
+    if (c >= 0x20 && c < 0x80 && strchr("<>\\'\"", c) == NULL) {
+      if (n > 0) {
+        *esc++ = c;
+        n--;
+      }
+      r++;
+    } else {
+      if (n > 0) {
+        snprintf(esc, n, "\\x%02x", (int)c);
+        esc += 4;
+        n -= 4;
+      }
+      r += 4;
+    }
+  }
+  return r;
+}
+
 void c_create_window_and_block(
   const char* title,
   const char* uri,
@@ -17,37 +50,61 @@ void c_create_window_and_block(
   int resizable,
   int debuggable
 ) {
-  webview(title, uri, width, height, resizable, debuggable);
+  webview_t w = c_create_window(title, uri, width, height, resizable, debuggable);
+  c_iterate_window(w);
+  c_destroy_window(w);
 }
 
-struct webview* c_create_window(
+webview_t c_create_window(
   const char* title,
   const char* uri,
   int width,
   int height,
   int resizable,
-  int debuggable,
-  void (*webview_callback_fn)(struct webview* w, const char* arg)
+  int debuggable
 ) {
-  struct webview* w;
-  w = malloc(sizeof(struct webview));
+  webview_t w;
+  w = malloc(sizeof(webview_t));
   if (NULL == w) {
     printf("[WEBVIEWHS:ERROR] Could not create a window!\n");
     return NULL;
   }
-  w->title              = title;
-  w->url                = uri;
-  w->width              = width;
-  w->height             = height;
-  w->debug              = debuggable;
-  w->resizable          = resizable;
-  w->external_invoke_cb = webview_callback_fn;
-  webview_init(w);
+  w = webview_create(debuggable, NULL);
+  c_set_window_title(w, title);
+  webview_set_size(w, width, height,
+    resizable ? WEBVIEW_HINT_NONE : WEBVIEW_HINT_FIXED);
+  webview_navigate(w, uri);
   return w;
 }
 
+void c_bind_callback(
+  webview_t w,
+  const char *name,
+  void (*webview_callback_fn)(const char *seq, const char *req, void *arg),
+  void *arg
+) {
+  if (NULL == w) {
+    printf("[WEBVIEWHS:ERROR] Could not bind the callback!\n");
+    return;
+  }
+  webview_bind(w, name, webview_callback_fn, arg);
+}
+
+void c_return_response(
+  webview_t w,
+  const char *seq,
+  int status,
+  const char *result
+) {
+    if (NULL == w) {
+    printf("[WEBVIEWHS:ERROR] Could not return the response!\n");
+    return;
+  }
+  webview_return(w, seq, status, result);
+}
+
 void c_set_window_title(
-  struct webview* w,
+  webview_t w,
   const char* newTitle
 ) {
   if (NULL == w) {
@@ -57,98 +114,54 @@ void c_set_window_title(
   webview_set_title(w, newTitle);
 }
 
-void c_set_window_fullscreen(
-  struct webview* w,
-  int fullscreen
-) {
-  if (NULL == w) {
-    printf("[WEBVIEWHS:ERROR] Could not set the window fullscreen!\n");
-    return;
-  }
-  webview_set_fullscreen(w, fullscreen);
-}
-
-void c_set_window_background_color(
-  struct webview* w,
-  uint8_t red,
-  uint8_t green,
-  uint8_t blue,
-  uint8_t alpha
-) {
-  if (NULL == w) {
-    printf("[WEBVIEWHS:ERROR] Could not set the window background color!\n");
-    return;
-  }
-  webview_set_color(w, red, green, blue, alpha);
-}
-
-int c_iterate_window(
-  struct webview* w,
-  int block
+void c_iterate_window(
+  webview_t w
 ) {
   if (NULL == w) {
     printf("[WEBVIEWHS:ERROR] Could not iterate the window!\n");
-    return -1;
+    return;
   }
-  if (1 == block) {
-    int should_exit = 0;
-    do {
-      should_exit = webview_loop(w, block);
-    } while (0 == should_exit);
-    return should_exit;
-  }
-  return webview_loop(w, block);
+  webview_run(w);
 }
 
 int c_run_javascript(
-  struct webview* w,
+  webview_t w,
   char* javascript
 ) {
   if (NULL == w) {
     printf("[WEBVIEWHS:ERROR] Could not run JavaScript!\n");
     return -1;
   }
-  return webview_eval(w, javascript);
+  webview_eval(w, javascript);
+  return 1;
 }
 
 int c_inject_css(
-  struct webview* w,
+  webview_t w,
   const char* css
 ) {
   if (NULL == w) {
     printf("[WEBVIEWHS:ERROR] Could not inject CSS!\n");
     return -1;
   }
-  return webview_inject_css(w, css);
-}
-
-void c_open_window_dialog(
-  struct webview* w,
-  enum webview_dialog_type dlgtype,
-  int flags,
-  const char* primary_text,
-  const char* secondary_text,
-  char* result,
-  size_t result_buffer_size
-) {
-  if (NULL == w) {
-    printf("[WEBVIEWHS:ERROR] Could not open window dialog!\n");
-    return;
+  int n = webview_js_encode(css, NULL, 0);
+  char *esc = (char *)calloc(1, sizeof(CSS_INJECT_FUNCTION) + n + 4);
+  if (esc == NULL) {
+    return -1;
   }
-  webview_dialog(
-    w,
-    dlgtype,
-    flags,
-    primary_text,
-    secondary_text,
-    result,
-    result_buffer_size
-  );
+  char *js = (char *)calloc(1, n);
+  webview_js_encode(css, js, n);
+  snprintf(esc, sizeof(CSS_INJECT_FUNCTION) + n + 4, "%s(\"%s\")",
+           CSS_INJECT_FUNCTION, js);
+  webview_eval(w, esc);
+  free(js);
+  free(esc);
+  return 1;
 }
 
 void c_dispatch_to_main(
-  struct webview* w,
-  void (*webview_dispatch_fn)(struct webview *ww, void *arg),
+  webview_t w,
+  void (*webview_dispatch_fn)(webview_t w, void *arg),
   void* arg
 ) {
   if (NULL == w) {
@@ -158,14 +171,8 @@ void c_dispatch_to_main(
   webview_dispatch(w, webview_dispatch_fn, arg);
 }
 
-void c_log(
-  char* message
-) {
-  webview_debug(message);
-}
-
 void c_terminate_window_loop(
-  struct webview* w
+  webview_t w
 ) {
   if (NULL == w) {
     printf("[WEBVIEWHS:ERROR] Could not terminate the window loop!\n");
@@ -175,13 +182,12 @@ void c_terminate_window_loop(
 }
 
 void c_destroy_window(
-  struct webview* w
+  webview_t w
 ) {
   if (NULL == w) {
     printf("[WEBVIEWHS:ERROR] Could not destroy the window!\n");
     return;
   }
-  webview_exit(w);
-  free(w);
+  webview_destroy(w);
   w = NULL;
 }

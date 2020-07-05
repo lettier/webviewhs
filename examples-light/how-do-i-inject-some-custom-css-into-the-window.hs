@@ -23,24 +23,25 @@ main =
       , WHS.windowParamsResizable  = True
       , WHS.windowParamsDebuggable = True
       }
-    -- This is the callback JavaScript can execute.
-    (\ _window text -> print text)
     -- This function runs before the loop.
-    (WHS.WithWindowLoopSetUp    (\ _window -> print ("Setting up." :: Data.Text.Text)))
+    (WHS.WithWindowLoopSetUp setUp)
     -- This function runs after the loop.
-    (WHS.WithWindowLoopTearDown (\ _window -> print ("Tearing down." :: Data.Text.Text)))
-    -- This function runs every window loop.
-    -- Return True to continue the loop or False to exit the loop.
-    $ \ window -> do
+    (WHS.WithWindowLoopTearDown tearDown)
+  where
+    setUp _window = do
+      print ("Setting up." :: Data.Text.Text)
+      -- This is a callback JavaScript can execute.
+      -- Inside JavaScript, you call "window.callback".
+      WHS.bindCallback _window "callback" (\ _window _ reqData () -> print reqData) ()
       let color = "#0000ff"
       -- injectCss' returns either True on success or False on failure.
       -- If you rather not use Clay, you can use injectCss'.
       success <-
-        WHS.injectCss'
-          window
+        WHS.injectCss' _window
           $ Data.Text.concat
-              [ "div { color: "
-              , color
-              , "; }"
-              ]
-      return success
+            [ "div { color: "
+            , color
+            , "; }"
+            ]
+      pure ()
+    tearDown _window = print ("Tearing down." :: Data.Text.Text)
