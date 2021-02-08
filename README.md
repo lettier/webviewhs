@@ -29,14 +29,11 @@ Be sure to explore the provided [examples](examples).
 - [x] webview_eval
 - [x] webview_inject_css
 - [x] webview_set_title
-- [x] webview_set_fullscreen
-- [x] webview_set_color
-- [x] webview_dialog
 - [x] webview_dispatch
 - [x] webview_terminate
 - [x] webview_exit
-- [x] webview_debug
-- [x] webview_print_log
+- [x] webview_bind
+- [x] webview_return
 
 ## How do I install webviewhs?
 
@@ -109,150 +106,47 @@ main = do
       }
 ```
 
-If you want more control over the native desktop window, you could do something like this:
+You can also bind callbacks to communicate with HTML/JS:
 
 ```haskell
 {-# LANGUAGE
     OverloadedStrings
-  , QuasiQuotes
 #-}
 
-import Control.Monad
-import Control.Concurrent
-import Control.Concurrent.BoundedChan as CCBC
-import Data.Maybe
-import Data.Text
-import qualified Data.Text.Lazy as DTL
-import Data.Text.Format.Heavy
-import Language.Javascript.JMacro
-import qualified Clay
 import qualified Graphics.UI.Webviewhs as WHS
 
 main :: IO ()
 main = do
-  -- Create a channel to communicate between the main thread and another thread you'll create.
-  -- This isn't necessary but it's a great way to communicate between threads.
-  channel <- newBoundedChan 1
-
-  -- withWindowLoop handles the creation, iteration, and deletion of the window.
-  WHS.withWindowLoop
-
-    -- Set the window creation params.
-    WHS.WindowParams
+  eitherWindow <- WHS.createWindow windowParams
+  case eitherWindow of
+    Left  _      -> pure ()
+    Right window -> do
+      WHS.bindCallback window "callback1" callback "custom data"
+      WHS.bindCallback window "callback2" callbackWithResponse ()
+      WHS.iterateWindowLoop window
+      WHS.terminateWindowLoop window
+      WHS.destroyWindow window
+  where
+    windowParams = WHS.WindowParams
       { WHS.windowParamsTitle      = "Test"
-        -- This could be a localhost URL to your single-page application (SPA).
-      , WHS.windowParamsUri        = "https://lettier.github.com"
+      , WHS.windowParamsUri        = "https://lettier.github.io"
       , WHS.windowParamsWidth      = 800
       , WHS.windowParamsHeight     = 600
       , WHS.windowParamsResizable  = True
-      , WHS.windowParamsDebuggable = True -- Enables the Web Inspector if using WebKit.
+      , WHS.windowParamsDebuggable = True
       }
 
-    -- webview allows you to specify a callback function that can be
-    -- called from the JavaScript side.
-    -- The callback receives a single string parameter.
-    -- This could be unstructured text or unparsed JSON for example.
-    -- You can just print what was received for now.
-    (\ _window stringFromJavaScript -> print stringFromJavaScript)
+    -- This can be called from Html/JS as "window.callback1(msg)"
+    -- userData was given to bindCallback as parameter
+    callback window _ req userData = do
+      print req
+      print userData
 
-    -- This function runs before the loop.
-    (WHS.WithWindowLoopSetUp    (\ _window -> print "Setting up."))
-
-    -- This function runs after the loop.
-    (WHS.WithWindowLoopTearDown (\ _window -> print "Tearing down."))
-
-    -- If you don't need to set up and/or tear down anything, you can do this.
-    -- (WHS.WithWindowLoopSetUp    (void . return . const))
-    -- (WHS.WithWindowLoopTearDown (void . return . const))
-
-    -- This function is called continuously.
-    -- Return True to continue the window loop or
-    -- return False to exit the loop and destroy the window.
-    $ \ window -> do
-
-      -- webviewhs provides log and log'.
-      -- log uses text-format-heavy which provides a
-      -- "full-featured string formatting function, similar to Python's string.format."
-      -- log' takes a simple Text string.
-      -- According to webview, logging will print to
-      -- "stderr, MacOS Console or [Windows] DebugView."
-      let string = "world" :: Text
-      WHS.log "Hello {string}!" [("string" :: DTL.Text, Variable string)]
-
-      -- webview allows you to run JS inside the window.
-      -- webviewhs comes with runJavaScript and runJavaScript'.
-      -- runJavaScript uses JMacro which is a
-      -- "simple DSL for lightweight (untyped) programmatic generation of Javascript."
-      -- runJavaScript' takes a Text string which may or may not be valid JavaScript.
-      let red = "red" :: Text
-      _ <- WHS.runJavaScript
-        window
-
-        -- This changes the web page background color to red.
-        -- Notice that you can use Haskell values inside the JavaScript and
-        -- even use Haskell like syntax.
-        [jmacro|
-          fun setBackgroundColor color { document.body.style.backgroundColor = color; }
-          setTimeout(
-            \ -> setBackgroundColor `(red)`,
-            5000
-          );
-        |]
-
-      -- webview allows you to inject CSS into the window.
-      -- webviewhs offers injectCss and injectCss'.
-      -- injectCss uses Clay "a CSS preprocessor like LESS and Sass,
-      -- but implemented as an embedded domain specific language (EDSL) in Haskell."
-      -- injectCss' takes a Text string which may or may not be valid CSS.
-      _ <- WHS.injectCss
-        window
-
-        -- This turns all <div> text blue.
-        $ Clay.div Clay.?
-          Clay.color "#0000ff"
-
-      -- Inside the window loop, create a thread.
-      _ <- forkIO $ do
-        WHS.log' "Hello from inside a thread."
-
-        -- When you're not in the main window UI thread, you'll need to call
-        -- dispatchToMain if you want to interact with the window.
-        -- dispatchToMain will run the given function in the main UI thread.
-        -- Note that dispatchToMain runs the function asynchronously with no guarantee
-        -- as to when it will run.
-        WHS.dispatchToMain
-          window
-          $ \ window' -> do
-            result <-
-              WHS.runJavaScript
-                window'
-
-                -- This will randomly scroll the web page up and down.
-                [jmacro|
-                  if (Math.random() < 0.1) {
-                    setTimeout(
-                      function() {
-                        window.scrollTo(0, Math.random() * window.innerHeight);
-                      },
-                      10000
-                    );
-                  }
-                |]
-
-            -- runJavaScript returns True if it was successful and
-            -- False if something went wrong.
-            -- Here is an attempt to write the result to the channel.
-            void $ CCBC.tryWriteChan channel result
-
-      -- Exit the loop if you read False from the channel.
-      -- Note that tryReadChan does not block which is
-      -- important when inside the window loop.
-      fromMaybe True <$> tryReadChan channel
-
-  -- At this point,
-  -- the loop has been exited,
-  -- the window has been destroyed,
-  -- and the program will now exit.
+    -- This can be called from Html/JS as "let p = window.callback2(msg)"
+    -- where p is a Promise which can be rejected, resolved, or ignored
+    callbackWithResponse window reqId req _ = do
+      print req
+      WHS.respondRequest reqId WHS.RequestResolve "'some data'"
 ```
 
 For more ways to use webviewhs,

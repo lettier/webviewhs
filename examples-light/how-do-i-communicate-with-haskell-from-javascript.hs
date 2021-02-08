@@ -36,27 +36,34 @@ main =
       , WHS.windowParamsResizable  = True
       , WHS.windowParamsDebuggable = True
       }
-    -- This is the callback JavaScript can execute.
-    -- Inside JavaScript, you call "window.external.invoke".
-    (\ _window stringFromJavaScript -> do
-      print stringFromJavaScript
-      print (decode (fromStrict $ encodeUtf8 stringFromJavaScript) :: Maybe JsonMessage)
-    )
     -- This function runs before the loop.
-    (WHS.WithWindowLoopSetUp    (\ _window -> print ("Setting up." :: Data.Text.Text)))
+    (WHS.WithWindowLoopSetUp setUp)
     -- This function runs after the loop.
-    (WHS.WithWindowLoopTearDown (\ _window -> print ("Tearing down." :: Data.Text.Text)))
+    (WHS.WithWindowLoopTearDown tearDown)
+  where
+    callback _window _ dataFromJavaScript () = do
+      print dataFromJavaScript
+      print (decode (fromStrict $ encodeUtf8 dataFromJavaScript) :: Maybe JsonMessage)
     -- This function runs every window loop.
-    -- Return True to continue the loop or False to exit the loop.
-    $ \ window -> do
+    foo _window _ dataFromJavaScript () = do
+      print dataFromJavaScript
       let message' = "Hello from JavaScript." :: Text
       -- runJavaScript' returns either True on success or False on failure.
-      success <-
-        WHS.runJavaScript'
-          window
-          $ Data.Text.concat
-              [ "window.external.invoke(JSON.stringify({ message: \""
-              , message'
-              , "\" }));"
-              ]
-      return success
+      WHS.runJavaScript'
+        _window
+        $ Data.Text.concat
+            [ "window.callback(JSON.stringify({ message: \""
+            , message'
+            , "\" }));"
+            ]
+      pure ()
+
+    setUp _window = do
+      print ("Setting up." :: Data.Text.Text)
+      -- This is a callback JavaScript can execute.
+      -- Inside JavaScript, you call "window.callback".
+      WHS.bindCallback _window "callback" callback ()
+      WHS.bindCallback _window "foo" foo ()
+      WHS.runJavaScript' _window "setTimeout(function f(){ console.log('called f'); window.foo(''); setTimeout(f, 0); }, 1000)"
+      pure ()
+    tearDown _window = print ("Tearing down." :: Data.Text.Text)

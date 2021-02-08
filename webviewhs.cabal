@@ -1,3 +1,4 @@
+cabal-version:  2.2
 name:           webviewhs
 version:        0.1.0.0
 synopsis:       Create native dialogs and windows that run web pages.
@@ -11,13 +12,13 @@ bug-reports:    https://github.com/lettier/webviewhs/issues
 author:         David Lettier
 maintainer:     David Lettier
 copyright:      (C) 2018 David Lettier
-license:        BSD3
+license:        BSD-3-Clause
 license-file:   LICENSE
 build-type:     Simple
-cabal-version:  >= 1.10
 
 extra-source-files:
     ./CHANGELOG.md
+  , ./deps/webview/webview.cpp
   , ./deps/webview/webview.h
   , ./deps/webview/LICENSE
   , ./src/c/webview-ffi.h
@@ -42,6 +43,8 @@ library
     , src/c/webview-ffi.h
   c-sources:
       src/c/webview-ffi.c
+  cxx-sources:
+      deps/webview/webview.cpp
   build-depends:
       base >= 4.7 && < 5
     , text
@@ -75,3 +78,4 @@ library
   if flag(light)
     cpp-options:
       -DLIGHT
+  extra-libraries: stdc++

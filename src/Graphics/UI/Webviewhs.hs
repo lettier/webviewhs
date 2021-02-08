@@ -39,33 +39,27 @@
 -}
 
 module Graphics.UI.Webviewhs
-  ( WindowParams(..)
-  , WindowBackgroundColor(..)
-  , WindowAlertDialogType(..)
+  ( RequestResponseType(..)
+  , WindowParams(..)
   , Window
   , WithWindowLoopSetUp(..)
   , WithWindowLoopTearDown(..)
   , createWindowAndBlock
   , createWindow
   , setWindowTitle
-  , setWindowFullscreen
-  , setWindowBackgroundColor
   , withWindowLoop
   , iterateWindowLoop
   , runJavaScript'
 #ifndef LIGHT
   , runJavaScript
   , injectCss
-  , Graphics.UI.Webviewhs.log
 #endif
   , injectCss'
-  , openWindowAlertDialog
-  , withWindowOpenDialog
-  , withWindowSaveDialog
   , dispatchToMain
-  , Graphics.UI.Webviewhs.log'
   , terminateWindowLoop
   , destroyWindow
+  , bindCallback
+  , respondRequest
   )
 where
 
@@ -116,26 +110,12 @@ data CWindowParams =
     , cWindowParamsDebuggable :: CInt
     }
 
--- | Specifies the RGBA for the window background color.
-data WindowBackgroundColor =
-  WindowBackgroundColor
-    { windowBackgroundColorRed   :: Word8
-    , windowBackgroundColorGreen :: Word8
-    , windowBackgroundColorBlue  :: Word8
-    , windowBackgroundColorAlpha :: Word8
-    }
-
--- | Specifies the window alert dialog type.
-data  WindowAlertDialogType =
-      WindowAlertDialogTypeInfo
-    | WindowAlertDialogTypeWarning
-    | WindowAlertDialogTypeError
+data RequestResponseType
+  = RequestReject
+  | RequestResolve
 
 newtype WithWindowLoopSetUp    a = WithWindowLoopSetUp    (Window a -> IO ())
 newtype WithWindowLoopTearDown a = WithWindowLoopTearDown (Window a -> IO ())
-
-windowDialogTypeAlert :: CInt
-windowDialogTypeAlert = 2
 
 foreign import ccall "webview-ffi.h c_create_window_and_block"
     c_create_window_and_block
@@ -155,7 +135,6 @@ foreign import ccall "webview-ffi.h c_create_window"
       ->  CInt
       ->  CInt
       ->  CInt
-      ->  FunPtr (Window a -> CString -> IO ())
       ->  IO (Window a)
 
 foreign import ccall "webview-ffi.h c_set_window_title"
@@ -164,26 +143,10 @@ foreign import ccall "webview-ffi.h c_set_window_title"
       ->  CString
       ->  IO ()
 
-foreign import ccall "webview-ffi.h c_set_window_fullscreen"
-  c_set_window_fullscreen
-      ::  Window a
-      ->  CInt
-      ->  IO ()
-
-foreign import ccall "webview-ffi.h c_set_window_background_color"
-  c_set_window_background_color
-      ::  Window a
-      ->  CUChar
-      ->  CUChar
-      ->  CUChar
-      ->  CUChar
-      ->  IO ()
-
 foreign import ccall "webview-ffi.h c_iterate_window"
   c_iterate_window
       ::  Window a
-      ->  CInt
-      ->  IO CInt
+      ->  IO ()
 
 foreign import ccall "webview-ffi.h c_run_javascript"
   c_run_javascript
@@ -197,27 +160,11 @@ foreign import ccall "webview-ffi.h c_inject_css"
       ->  CString
       ->  IO CInt
 
-foreign import ccall "webview-ffi.h c_open_window_dialog"
-  c_open_window_dialog
-      ::  Window a
-      ->  CInt    -- Type
-      ->  CInt    -- Flags
-      ->  CString -- Primary Text / Title
-      ->  CString -- Secondary Text
-      ->  CString -- Buffer to store result
-      ->  CUInt   -- Result buffer size
-      ->  IO ()
-
 foreign import ccall safe "webview-ffi.h c_dispatch_to_main"
   c_dispatch_to_main
       ::  Window a
       ->  FunPtr (Window a -> Ptr () -> IO () )
       ->  Ptr ()
-      ->  IO ()
-
-foreign import ccall "webview-ffi.h c_log"
-  c_log
-      ::  CString
       ->  IO ()
 
 foreign import ccall "webview-ffi.h c_terminate_window_loop"
@@ -230,6 +177,22 @@ foreign import ccall "webview-ffi.h c_destroy_window"
       ::  Window a
       ->  IO ()
 
+foreign import ccall "webview-ffi.h c_bind_callback"
+  c_bind_callback
+      ::  Window a
+      ->  CString
+      ->  FunPtr (CString -> CString -> Ptr b -> IO ())
+      ->  Ptr b
+      ->  IO ()
+
+foreign import ccall "webview-ffi.c c_return_response"
+  c_return_response
+      ::  Window a
+      ->  CString
+      ->  CInt
+      ->  CString
+      ->  IO ()
+
 foreign import ccall "wrapper"
   makeDispatchCallback
       ::  (Window a -> Ptr () -> IO ())
@@ -237,8 +200,8 @@ foreign import ccall "wrapper"
 
 foreign import ccall "wrapper"
   makeCallback
-      ::  (Window a -> CString -> IO ())
-      ->  IO (FunPtr (Window a -> CString -> IO ()))
+      ::  (CString -> CString -> Ptr b -> IO ())
+      ->  IO (FunPtr (CString -> CString-> Ptr b -> IO ()))
 
 -- | Creates a window and runs the main loop unless the window is destroyed.
 -- Useful for loading a web page and not having to manage the loop.
@@ -266,16 +229,13 @@ createWindowAndBlock
   free cWindowParamsTitle
   free cWindowParamsUri
 
--- | Creates a window giving you the chance to changes its properties, run its loop, etc.
+-- | Creates a window giving you the chance to changes its properties.
 -- Returns 'Left' on failure and 'Right' 'Window' on success.
 createWindow
   ::  WindowParams
-  ->  (Window a -> Text -> IO ()) -- ^ A callback that JavaScript can use to
-                                  -- communicate with the Haskell side.
   ->  IO (Either Text (Window a))
 createWindow
   windowParams
-  callback
   = do
   CWindowParams
     { cWindowParamsTitle
@@ -285,10 +245,6 @@ createWindow
     , cWindowParamsResizable
     , cWindowParamsDebuggable
     } <- windowParamsToC windowParams
-  let callback' window cString = do
-        string <- peekCString cString
-        callback window (Data.Text.pack string)
-  funPtr <- makeCallback callback'
   result <-
     c_create_window
       cWindowParamsTitle
@@ -297,17 +253,53 @@ createWindow
       cWindowParamsHeight
       cWindowParamsResizable
       cWindowParamsDebuggable
-      funPtr
   if result == nullPtr
     then do
       free cWindowParamsTitle
       free cWindowParamsUri
-      freeHaskellFunPtr funPtr
       return $ Left "[WEBVIEWHS:ERROR] Could not create window."
     else do
       free cWindowParamsTitle
       free cWindowParamsUri
       return $ Right result
+
+-- | Expose a callback as global JavaScript function.
+bindCallback
+  ::  Window a
+  ->  Text -- ^ Callback name
+  ->  (Window a -> Text -> Text -> b -> IO ()) 
+      -- ^ A callback that JavaScript can use to
+      -- communicate with the Haskell side.
+  ->  b -- ^ User defined data
+  ->  IO ()
+bindCallback
+  window
+  callbackName
+  callback
+  userData
+  = do
+  callbackName' <- newCString $ Data.Text.unpack callbackName
+  let callback' cSeq cReq _ = do
+        seq <- peekCString cSeq
+        req <- peekCString cReq
+        callback window (Data.Text.pack seq) (Data.Text.pack req) userData
+  funPtr <- makeCallback callback'
+  c_bind_callback window callbackName' funPtr nullPtr
+
+-- | Send a value to answer request from webview
+respondRequest
+  :: Window a
+  -> Text -- ^ request id
+  -> RequestResponseType
+  -> Text -- ^ json encoded result
+  -> IO ()
+respondRequest window reqId responseType result = do
+  reqId' <- newCString $ Data.Text.unpack reqId
+  status' <- case responseType of
+    RequestReject  -> pure 1
+    RequestResolve -> pure 0
+  result' <- newCString $ Data.Text.unpack result
+  c_return_response window reqId' status' result'
 
 -- | Changes the window title.
 setWindowTitle
@@ -322,59 +314,14 @@ setWindowTitle
   c_set_window_title window newTitle'
   free newTitle'
 
--- | Sets the window's fullscreen state.
--- Pass 'True' to put the window into fullscreen mode.
--- Pass 'False' to take the window out of fullscreen mode.
-setWindowFullscreen
-  ::  Window a
-  ->  Bool
-  ->  IO ()
-setWindowFullscreen
-  window
-  fullscreen
-  = do
-  let fullscreen' = if fullscreen then 1 else 0
-  c_set_window_fullscreen window fullscreen'
-
--- | If the loaded web page does not specify a background color,
--- this sets the window's background color.
-setWindowBackgroundColor
-  ::  Window a
-  ->  WindowBackgroundColor
-  ->  IO ()
-setWindowBackgroundColor
-  window
-  WindowBackgroundColor
-    { windowBackgroundColorRed
-    , windowBackgroundColorGreen
-    , windowBackgroundColorBlue
-    , windowBackgroundColorAlpha
-    }
-  = do
-  let red'   = fromIntegral windowBackgroundColorRed   :: CUChar
-  let green' = fromIntegral windowBackgroundColorGreen :: CUChar
-  let blue'  = fromIntegral windowBackgroundColorBlue  :: CUChar
-  let alpha' = fromIntegral windowBackgroundColorAlpha :: CUChar
-  c_set_window_background_color window red' green' blue' alpha'
-
--- | Iterates the window loop.
--- If 'True', runs the window loop continuously—blocking until the window exits.
--- If 'False', runs one iteration of the window loop
--- and releases control back to the caller.
+-- | Runs the window loop continuously — blocking until the window exits.
 iterateWindowLoop
   ::  Window a
-  ->  Bool -- ^ Pass 'True' to iterate until the window exits.
-           -- Pass 'False' to run one iteration.
-  ->  IO Bool
+  ->  IO ()
 iterateWindowLoop
   window
-  block
   = do
-  result <-
-    c_iterate_window
-      window
-      (if block then 1 else 0)
-  return (result == 0)
+  c_iterate_window window
 
 -- | Runs the given JavaScript inside the window.
 -- The given JavaScript is not checked for validity.
@@ -407,109 +354,6 @@ injectCss'
   free css'
   return (result /= -1)
 
--- | Opens a window alert dialog.
-openWindowAlertDialog
-  ::  Window a
-  ->  WindowAlertDialogType
-  ->  Text -- ^ This is the primary message.
-  ->  Text -- ^ This is the secondary message.
-  ->  IO ()
-openWindowAlertDialog
-  window
-  windowAlertDialogType
-  primaryMessage
-  secondaryMessage
-  = do
-  primaryMessage'   <- newCString $ Data.Text.unpack primaryMessage
-  secondaryMessage' <- newCString $ Data.Text.unpack secondaryMessage
-  result            <- newCString ""
-  c_open_window_dialog
-    window
-    windowDialogTypeAlert
-    (dialogType windowAlertDialogType)
-    primaryMessage'
-    secondaryMessage'
-    result
-    0
-  free primaryMessage'
-  free secondaryMessage'
-  free result
-  where
-    dialogType :: WindowAlertDialogType -> CInt
-    dialogType WindowAlertDialogTypeInfo    = 2
-    dialogType WindowAlertDialogTypeWarning = 4
-    dialogType WindowAlertDialogTypeError   = 6
-
--- | Opens a native file chooser dialog.
--- Accepts a callback that receives the selection.
-withWindowOpenDialog
-  ::  Window a
-  ->  Text -- ^ The open dialog window title.
-  ->  Bool -- ^ Pass 'True' to disable selecting files.
-           -- Pass 'False' to allow selecting both files and directories.
-  ->  (Text -> IO ()) -- ^ A callback that accepts the result of the dialog.
-  ->  IO ()
-withWindowOpenDialog
-  window
-  title
-  =
-  withWindowFileDialog
-    window
-    title
-    True
-
--- | Opens a native file saving dialog.
--- Accepts a callback that receives the selection.
--- Does not actually save the file.
--- Save the file inside the provided callback.
-withWindowSaveDialog
-  ::  Window a
-  ->  Text -- ^ The save dialog window title.
-  ->  (Text -> IO ()) -- ^ A callback that accepts the result of the dialog.
-  ->  IO ()
-withWindowSaveDialog
-  window
-  title
-  =
-  withWindowFileDialog
-    window
-    title
-    False
-    False
-
-withWindowFileDialog
-  ::  Window a
-  ->  Text
-  ->  Bool
-  ->  Bool
-  ->  (Text -> IO ())
-  ->  IO ()
-withWindowFileDialog
-  window
-  title
-  open
-  disableOpeningFiles
-  callback
-  = do
-  title'          <- newCString $ Data.Text.unpack title
-  message'        <- newCString ""
-  let bufferSize  = 1024
-  let bufferSize' = fromIntegral bufferSize :: CUInt
-  result          <- callocBytes bufferSize
-  c_open_window_dialog
-    window
-    (if open then 0 else 1)
-    (if disableOpeningFiles then 1 else 0)
-    title'
-    message'
-    result
-    bufferSize'
-  free title'
-  free message'
-  result' <- peekCString result
-  callback $ Data.Text.pack result'
-  free result
-
 -- | Runs the given function in the main window UI thread.
 -- Use this function whenever you wish to interact with the
 -- window but you're not running in the main window UI thread.
@@ -532,19 +376,6 @@ dispatchToMain
   freeHaskellFunPtr funPtr
   return ()
 
--- | Logs the given input to stderr, macOS console,
--- or Windows DebugView depending on the build platform.
-log'
-  ::  Text
-  ->  IO ()
-log'
-  entry
-  = do
-  entry' <- newCString $ Data.Text.unpack entry
-  c_log entry'
-  free entry'
-  return ()
-
 -- | Terminates the window's loop.
 terminateWindowLoop
   ::  Window a
@@ -561,9 +392,6 @@ destroyWindow = c_destroy_window
 -- It accepts a JavaScript callback, setup, teardown, and iteration function.
 withWindowLoop
   ::  WindowParams
-  ->  (Window a -> Text -> IO ()) -- ^ A callback function that can be invoked from the JavaScript side.
-                                  -- The callback must accept a 'Window' and the JavaScript sent 'Text'.
-                                  -- The JavaScript sent 'Text' could be unstructured or structured like JSON.
   ->  WithWindowLoopSetUp    a    -- ^ A function that is called before iterating.
                                   -- It must accept a 'Window' and return 'IO' ().
                                   -- Use it to set up before entering the main loop.
@@ -576,32 +404,21 @@ withWindowLoop
                                   -- don't have a teardown function.
                                   -- Note, do not terminate the window loop and/or
                                   -- destroy the window as this is done for you.
-  ->  (Window a -> IO Bool)       -- ^ A function that is called each iteration.
-                                  -- Return 'True' to continue or 'False' to stop iterating.
   ->  IO ()
 withWindowLoop
   windowParams
-  callback
   (WithWindowLoopSetUp setUp)
   (WithWindowLoopTearDown tearDown)
-  iteration
   = do
-  eitherWindow   <- createWindow windowParams callback
+  eitherWindow   <- createWindow windowParams
   case eitherWindow of
     Left  e      -> putStrLn $ Data.Text.unpack e
     Right window -> do
       setUp               window
-      loop                window iteration
+      iterateWindowLoop   window
       tearDown            window
       terminateWindowLoop window
       destroyWindow       window
-  where
-    loop :: Window a -> (Window a -> IO Bool) -> IO ()
-    loop window iteration' = do
-      continue        <- iteration'        window
-      shouldContinue  <- iterateWindowLoop window False
-      when (continue && shouldContinue) $
-        loop window iteration'
 
 #ifndef LIGHT
 -- | Runs the given JavaScript inside the window.
@@ -634,22 +451,6 @@ injectCss
     window $
       DTL.toStrict $
         Clay.render css
-
--- | Logs the given formatted input to stderr, macOS console,
--- or Windows DebugView depending on the build platform.
--- Uses [Data.Text.Format.Heavy](https://hackage.haskell.org/package/text-format-heavy).
--- Note, this function is not available when using the `light` cabal build flag.
-log
-  ::  VarContainer vars
-  =>  Format
-  ->  vars
-  ->  IO ()
-log
-  fmt
-  vars
-  = do
-  let entry = format fmt vars
-  log' $ DTL.toStrict entry
 #endif
 
 windowParamsToC
