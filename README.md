@@ -1,5 +1,7 @@
 ![webviewhs logo](https://i.imgur.com/yohrYgX.png)
 
+[![Build status](https://github.com/lettier/webviewhs/actions/workflows/ci.yml/badge.svg)](https://github.com/lettier/webviewhs/actions/workflows/ci.yml)
+
 # What is webviewhs?
 
 webviewhs is a Haskell binding to the [webview](https://github.com/zserge/webview) library created by
