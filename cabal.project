@@ -1,0 +1,4 @@
+packages:
+  webviewhs.cabal
+  examples/webviewhs-examples.cabal
+  examples-light/webviewhs-examples-light.cabal

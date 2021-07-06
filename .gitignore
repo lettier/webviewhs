@@ -2,7 +2,7 @@
 .stack-work/*
 *.stack*
 dist/*
-dist-newstyle/*
+dist-newstyle
 haddock/*
 hackage-docs-archive/*
 *cabal.config*
